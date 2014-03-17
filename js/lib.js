@@ -1,6 +1,7 @@
 angular.module('socket.io', []).
 factory('socket', function ($rootScope) {
-  var socket = io.connect(document.angular_module.socket.io.host || null);
+  var res = {resource: 'skyapi/socket.io'};
+  var socket = io.connect(document.angular_module.socket.io.host || null, res);
   return {
     socket: socket,
     on: function (eventName, callback) {
