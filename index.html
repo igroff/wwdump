@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+<title></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    .commandInput { width: 95%; }
+  </style>
+  <link rel="stylesheet" href="/css/bootstrap.min.css">
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.0.6/angular.min.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+  <script src="//public.intimidatingbits.com/js/angular-ui-0.3.2.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
+  <script src="/js/lib.js" type="text/javascript"></script>
+  <script src="http://ar.mstuff.co/socket.io/socket.io.js"></script>
+  <script type="text/javascript">
+    document.angular_module = {socket: {io: {host: 'http://ar.mstuff.co:80/'}}};
+    angular
+    .module('theApp', ['ui.directives', 'socket.io'])
+    .controller('LocationController',
+      function($http, $scope, socket){
+        $scope.coords = {latitude: 0, longitude:0};
+        document.locationControllerScope = $scope;
+        var echoData = { canRun: true, timerHandle: null, sent: null };
+        var apply = function() { $scope.$apply(); }
+        var posHandler = function(position){
+          $scope.coords = position.coords;
+          $scope.position = position
+          $scope.coordsJSON = JSON.stringify($scope.coords, null, 2);
+          setTimeout(apply);
+        }
+        var errorHandler = function(err){
+          $scope.err = err;
+          setTimeout(apply);
+        }
+        var displayEntries = function(entries){
+          $scope.entries = entries;
+          setTimeout(apply);
+        }
+        var echoCompleteHandler = function(){
+          clearTimeout(echoData.timerHandle);
+          received = new Date();
+          console.log("round trip time: " + (received - echoData.sent));
+          echo();
+        }
+        var echo = function() {
+          if ( echoData.canRun ){ 
+            echoData.timerHandle = setTimeout(function(){
+              echoData.sent = new Date();
+              socket.emit('echo', null, echoCompleteHandler);
+            }, 1000);
+          }
+        }
+        $scope.stopEcho = function () { echoData.canRun = false; console.log("echo stopped");  }
+        $scope.startEcho = function () { echoData.canRun = true; console.log("echo started"); echo(); }
+        socket.emit('locationLog/read', null, displayEntries);
+        var counter = 0;
+        $scope.timeRest = function() {
+          var start = new Date();
+          var buster = (new Date()) + " " + (counter+1);
+          $http.get("/data/echo.js?" + buster, {config: {cache: false}}).
+            success(function() {
+              var end = new Date();
+              console.log("rest time: " + (end - start));
+            }
+          );
+        }
+        $scope.logCurrentPosition = function (){
+          socket.emit('locationLog/write', $scope.position, function() { console.log('logged'); });
+        }
+        navigator.geolocation.getCurrentPosition(posHandler,
+          errorHandler,
+          {enableHighAccuracy: false, timeout: 5000, maximumAge: 60000}
+        );
+    });
+  </script>
+</head>
+<body ng-app="theApp">
+
+<div ng-controller="LocationController">
+  <div ng-show="err">Unable to obtain location data, code {{err.code}}</div>
+  <pre class="panel" ng-hide="err" class="debug">{{coordsJSON}}</pre>
+  <div ng-show="entries">
+    <ul>
+      <li ng-repeat="entry in entries">{{entry.coords.longitude}}</li>
+    </ul>
+  </div>
+  <div>
+    <button type="button" class="btn btn-info btn-small" ng-click="logCurrentPosition()">Log Location</button>
+    <hr/>
+    <button type="button" class="btn btn-info btn-small" ng-click="startEcho()">Echo!</button>
+    <button type="button" class="btn btn-info btn-small" ng-click="stopEcho()">Stop Echo!</button>
+    <hr/>
+    <button class="btn btn-info btn-small" ng-click="timeRest()">Rest</button>
+</div>
+</div>
+</body>
+</html>
