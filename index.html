@@ -58,7 +58,7 @@
         $scope.timeRest = function() {
           var start = new Date();
           var buster = (new Date()) + " " + (counter+1);
-          $http.get("/data/echo.js?" + buster, {config: {cache: false}}).
+          $http.get("data/echo.js?" + buster, {config: {cache: false}}).
             success(function() {
               var end = new Date();
               console.log("rest time: " + (end - start));
